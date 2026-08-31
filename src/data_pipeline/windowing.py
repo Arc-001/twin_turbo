@@ -4,7 +4,7 @@ import numpy as np
 import pandas as pd
 
 
-def _padded_sequence(seq: np.ndarray, window_size: int) -> np.ndarray:
+def pad_sequence(seq: np.ndarray, window_size: int) -> np.ndarray:
     """Left-pad a short trajectory by repeating its first row (standard C-MAPSS practice)."""
     n = seq.shape[0]
     if n >= window_size:
@@ -37,7 +37,7 @@ def build_windows(
     for unit_id, group in df.sort_values(cycle_col).groupby(unit_col):
         seq = group[feature_cols].to_numpy(dtype=float)
         labels = group[label_col].to_numpy(dtype=float)
-        seq = _padded_sequence(seq, window_size)
+        seq = pad_sequence(seq, window_size)
 
         if last_only:
             window = seq[-window_size:]
