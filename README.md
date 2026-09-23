@@ -117,21 +117,16 @@ Twin_turbo/
 ## Running it
 
 ```bash
-pip install -r requirements.txt
+make setup        # .venv + dependencies (CUDA torch is used automatically if available)
+make experiments  # train everything under both protocols, cache per-cycle traces
+make evaluate     # all tables / sweeps / ablations -> artifacts/results/results.json
+make test         # unit + live-vs-replay integration tests
 
-# phase 1 — build windowed arrays for all four variants
-python scripts/build_dataset.py --dataset ALL
-
-# phase 2 — edge model
-python scripts/train_edge_model.py --dataset ALL
-
-# phase 3 — digital twin
-python scripts/train_twin_model.py --dataset FD001 --epochs 40
-
-# phase 4 — hybrid decision simulation
-python scripts/run_hybrid_decision.py --dataset ALL
-# or inspect one engine's full cycle-by-cycle timeline:
-python scripts/run_hybrid_decision.py --dataset FD001 --unit 34 --dump-timeline
+# stream one engine through the live hybrid estimator
+.venv/bin/python scripts/simulate_engine.py --dataset FD001 --unit 34
 ```
 
-Each script is independently runnable and reads/writes `data/processed/` and `artifacts/` — nothing needs to be re-run to inspect a later phase's output, as long as the phase before it has been run at least once.
+> The architecture and results sections above describe v1 (LSTM "twin").
+> v2 replaces it with a particle-filter degradation twin, conformal edge
+> intervals and a run-to-failure decision study; this README is rewritten
+> around v2 in the report phase.

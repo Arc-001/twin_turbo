@@ -3,3 +3,12 @@ __pycache__/
 .venv/
 data/processed/
 artifacts/
+
+# LaTeX build output
+report/*.aux
+report/*.bbl
+report/*.blg
+report/*.log
+report/*.out
+report/*.fls
+report/*.fdb_latexmk

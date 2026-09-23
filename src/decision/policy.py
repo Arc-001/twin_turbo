@@ -1,8 +1,9 @@
-"""Action-zone policy: maps a (RUL estimate, uncertainty) pair to an autonomous action.
+"""Action-zone policy: maps a calibrated RUL lower bound to an autonomous action.
 
-Uses a lower-confidence-bound (RUL - k*std) for zone classification rather than
-the raw point estimate, so higher twin uncertainty pushes the decision toward
-caution -- standard practice for safety-critical thresholding under uncertainty.
+Decisions use the lower end of a (1 - alpha) prediction interval rather than a
+point estimate, so a wider (less certain) interval pushes the action toward
+caution. Interval sources are all calibrated: conformal bands for the edge
+model, posterior quantiles for the particle-filter twin.
 """
 
 from dataclasses import dataclass
@@ -17,18 +18,16 @@ ZONE_ORDER = [GROUND_NOW, SCHEDULE_MAINTENANCE, WATCH, SAFE]
 
 @dataclass(frozen=True)
 class DecisionThresholds:
-    safe: float = 60.0    # effective RUL above this: normal operation
-    watch: float = 30.0   # below this: elevated monitoring
-    ground: float = 10.0  # below this: stop operation now
-    uncertainty_k: float = 1.0  # confidence margin multiplier applied to std
+    safe: float = 60.0    # lower bound above this: normal operation
+    watch: float = 30.0   # at or below: plan a maintenance slot
+    ground: float = 10.0  # at or below: stop operating now
 
 
-def classify_zone(rul_estimate: float, rul_std: float, thresholds: DecisionThresholds = DecisionThresholds()) -> str:
-    effective_rul = rul_estimate - thresholds.uncertainty_k * rul_std
-    if effective_rul <= thresholds.ground:
+def classify_zone(rul_lower: float, thresholds: DecisionThresholds = DecisionThresholds()) -> str:
+    if rul_lower <= thresholds.ground:
         return GROUND_NOW
-    if effective_rul <= thresholds.watch:
+    if rul_lower <= thresholds.watch:
         return SCHEDULE_MAINTENANCE
-    if effective_rul <= thresholds.safe:
+    if rul_lower <= thresholds.safe:
         return WATCH
     return SAFE

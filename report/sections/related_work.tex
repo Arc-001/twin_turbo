@@ -1,0 +1,107 @@
+\section{Literature Survey}
+\label{sec:related}
+
+\subsection{Prognostics and the C-MAPSS benchmark}
+Prognostics estimates the \emph{remaining useful life} (RUL) of an asset from
+condition-monitoring data, so that maintenance can be planned before failure
+rather than after it~\cite{jardine2006review,lei2018review}. Approaches are
+usually grouped into physics-based models, statistical (data-driven stochastic)
+models, and machine-learning models~\cite{si2011review,lei2018review}.
+The C-MAPSS dataset~\cite{saxena2008damage} was released by NASA for the 2008
+PHM data challenge: turbofan engines are simulated from a healthy state to
+failure under randomized initial wear, sensor noise, one or six operating
+regimes and one or two fault modes. It remains the most widely used
+RUL benchmark; Ramasso and Saxena~\cite{ramasso2014benchmark} surveyed the
+methods applied to it and documented pitfalls in how results are reported,
+including inconsistent RUL clipping and evaluation protocols.
+
+\subsection{Statistical and model-based prognostics}
+Two strands from this literature directly shape our digital twin.
+\emph{Health-index (HI) construction}: Wang et~al.~\cite{wang2008similarity}
+(a winning approach at PHM08) fuse sensors into a single HI by regressing
+sensor values onto $1$ for early-life and $0$ for end-of-life cycles, then
+match a test engine's HI curve against a library of training trajectories.
+\emph{Stochastic degradation models with Bayesian updating}: Gebraeel
+et~al.~\cite{gebraeel2005residual} model degradation as an exponential process
+whose parameters have a population prior learned from a fleet, and update that
+prior with each new observation of the individual unit to obtain a
+residual-life \emph{distribution}. Particle filters~\cite{arulampalam2002tutorial}
+generalize this updating to nonlinear, non-Gaussian settings; Orchard and
+Vachtsevanos~\cite{orchard2009particle} established the particle-filtering
+framework for online fault diagnosis and failure prognosis, and the
+Liu--West kernel-shrinkage scheme~\cite{liu2001combined} is the standard way to
+estimate static model parameters inside a particle filter without particle
+collapse. Such models are interpretable and yield full predictive
+distributions, but are seldom benchmarked against modern deep models on
+C-MAPSS.
+
+\subsection{Deep learning for RUL}
+Since 2016, deep networks trained on sliding windows of raw sensor data have
+dominated reported C-MAPSS accuracy. Babu et~al.~\cite{babu2016cnn} introduced
+convolutional networks for RUL regression; Zheng et~al.~\cite{zheng2017lstm}
+applied LSTMs~\cite{hochreiter1997lstm}; Li et~al.~\cite{li2018dcnn} showed
+that deeper 1-D convolutions with a piecewise-linear RUL target reach RMSE near
+12.6 on FD001. Later work added semi-supervised pre-training~\cite{listou2019semisup},
+encoder--decoders~\cite{yu2019bilstmed}, hybrid CNN--LSTM
+architectures~\cite{aldulaimi2019hdnn} and attention~\cite{ragab2020ats2s}.
+Table~\ref{tab:literature} compiles representative results. Two gaps are
+consistent across this line of work: (i) models output a point estimate,
+with no calibrated measure of confidence, and (ii) accuracy is reported only at
+the last observed cycle of each truncated test engine, which says nothing about
+whether the resulting \emph{maintenance decisions} are safe or economical.
+Gradient-boosted trees~\cite{friedman2001gbm,ke2017lightgbm} on hand-crafted
+window features remain a strong, far cheaper baseline.
+
+\subsection{Uncertainty quantification}
+Monte-Carlo dropout~\cite{gal2016dropout} and deep
+ensembles~\cite{lakshminarayanan2017ensembles} are the most common ways to
+attach uncertainty to neural RUL predictors. Their calibration is not
+guaranteed: Basora et~al.~\cite{basora2023uqbench} benchmark these methods for
+prognostics and find that calibration quality varies substantially across
+methods and engines. Conformal
+prediction~\cite{vovk2005alrw,angelopoulos2021gentle} instead wraps any point
+predictor and provides intervals with a finite-sample, distribution-free
+coverage guarantee under exchangeability; Mondrian (group-conditional) variants
+calibrate separately within bins, which matters for RUL where error grows with
+distance from failure. To our knowledge conformal intervals are still rarely
+used to drive maintenance actions on C-MAPSS.
+
+\subsection{Digital twins}
+The digital-twin concept was articulated for aerospace by Glaessgen and
+Stargel~\cite{glaessgen2012digital} as a model that ``mirrors the life of its
+flying twin'' by combining physics, fleet history and the vehicle's own sensor
+data, and was formalized by Grieves and Vickers~\cite{grieves2017digital} as a
+virtual counterpart linked to one specific physical instance and kept
+synchronized with it. Tao et~al.~\cite{tao2019digital} review industrial uses,
+with prognostics and health management among the most prominent. Two
+properties recur in these definitions and are often missing from works that
+label a neural RUL regressor a ``digital twin'': the model is
+\emph{instance-specific} (it holds state about one asset) and it is
+\emph{synchronized} with that asset as data arrive.
+
+\subsection{Edge intelligence and cascaded inference}
+Edge computing places computation near data sources to reduce latency,
+bandwidth and dependence on connectivity~\cite{shi2016edge}. Cascaded or
+early-exit inference~\cite{teerapittayanon2016branchynet} runs a cheap model on
+every input and defers to an expensive one only when the cheap model is not
+confident enough. Our framework applies the same idea across a
+device/twin boundary: a stateless edge model runs every cycle, and the
+stateful twin is synchronized only when a trigger fires.
+
+\subsection{From predictions to maintenance decisions}
+Classical reliability theory gives the baseline any predictive policy must
+beat: \emph{age replacement}, which replaces a unit at a fixed age chosen to
+minimize the long-run cost rate of the renewal process~\cite{barlow1960optimum}.
+We evaluate every policy with the same renewal-reward cost rate, so predictive
+maintenance is compared against this optimal time-based policy and not only
+against run-to-failure.
+
+\subsection{Positioning of this work}
+Existing C-MAPSS studies optimize last-cycle RMSE of point predictors;
+existing digital-twin work is mostly conceptual or not benchmarked on it.
+This project combines (i) an instance-specific, Bayesian-updated degradation
+twin in the tradition of~\cite{gebraeel2005residual,orchard2009particle},
+(ii) a conformally calibrated edge model, and (iii) a trigger-based
+synchronization scheme, and evaluates the combination on what matters
+operationally: failures prevented, useful life used and cost rate, over
+engines replayed all the way to failure.

@@ -1,10 +1,9 @@
-"""Digital twin sequence model: LSTM over the raw sensor window.
+"""Deep sequence baseline: LSTM over the raw sensor window.
 
-Unlike the edge model (flattened summary stats -> tree), the twin consumes
-the full raw (window_size, n_features) trajectory to capture temporal
-dynamics, and supports:
-  - MC-dropout uncertainty (stochastic forward passes with dropout active)
-  - forward trajectory projection (iterative what-if simulation to failure)
+Represents the data-driven deep-learning family of RUL models (Zheng et al.,
+2017). Consumes the full raw (window_size, n_features) trajectory and reports
+uncertainty via MC-dropout (Gal & Ghahramani, 2016). In this project it is a
+benchmark and an ablation alternative to the particle-filter digital twin.
 """
 
 from dataclasses import dataclass
@@ -14,7 +13,7 @@ import torch
 from torch import nn
 
 
-class TwinLSTM(nn.Module):
+class LSTMNet(nn.Module):
     def __init__(self, n_features: int, hidden_size: int = 64, num_layers: int = 1, dropout: float = 0.2):
         super().__init__()
         self.lstm = nn.LSTM(
@@ -35,17 +34,19 @@ class TwinLSTM(nn.Module):
 
 
 @dataclass
-class TwinRULModel:
+class LSTMRULModel:
     n_features: int
     hidden_size: int = 64
     num_layers: int = 1
     dropout: float = 0.2
     lr: float = 1e-3
     target_scale: float = 125.0
-    device: str = "cpu"
+    device: str = "cuda" if torch.cuda.is_available() else "cpu"
+    seed: int = 0
 
     def __post_init__(self) -> None:
-        self.net = TwinLSTM(self.n_features, self.hidden_size, self.num_layers, self.dropout).to(self.device)
+        torch.manual_seed(self.seed)
+        self.net = LSTMNet(self.n_features, self.hidden_size, self.num_layers, self.dropout).to(self.device)
 
     def fit(
         self,
@@ -58,7 +59,7 @@ class TwinRULModel:
         verbose: bool = True,
     ) -> list[dict[str, float]]:
         n = X.shape[0]
-        rng = np.random.RandomState(0)
+        rng = np.random.RandomState(self.seed)
         if groups is not None:
             # Split by unit (engine), not by window -- windows from the same
             # unit are highly correlated, so a random per-window split leaks
@@ -77,7 +78,8 @@ class TwinRULModel:
         X_t = torch.tensor(X, dtype=torch.float32)
         y_scaled = torch.tensor(y, dtype=torch.float32) / self.target_scale
         train_ds = torch.utils.data.TensorDataset(X_t[train_idx], y_scaled[train_idx])
-        loader = torch.utils.data.DataLoader(train_ds, batch_size=batch_size, shuffle=True)
+        gen = torch.Generator().manual_seed(self.seed)
+        loader = torch.utils.data.DataLoader(train_ds, batch_size=batch_size, shuffle=True, generator=gen)
         X_val, y_val = X_t[val_idx].to(self.device), y_scaled[val_idx].to(self.device)
 
         opt = torch.optim.Adam(self.net.parameters(), lr=self.lr)
@@ -85,6 +87,7 @@ class TwinRULModel:
         loss_fn = nn.MSELoss()
 
         history = []
+        best_rmse, best_state = float("inf"), None
         for epoch in range(epochs):
             self.net.train()
             running = 0.0
@@ -104,26 +107,33 @@ class TwinRULModel:
                 val_rmse_scaled = torch.sqrt(loss_fn(val_pred, y_val)).item()
             sched.step(val_rmse_scaled)
             val_rmse = val_rmse_scaled * self.target_scale
+            if val_rmse < best_rmse:
+                best_rmse = val_rmse
+                best_state = {k: v.detach().clone() for k, v in self.net.state_dict().items()}
             history.append({"epoch": epoch, "train_mse_scaled": train_loss, "val_rmse": val_rmse})
             if verbose:
                 print(f"  epoch {epoch + 1}/{epochs}  train_mse={train_loss:.2f}  val_rmse={val_rmse:.2f}")
+        if best_state is not None:
+            self.net.load_state_dict(best_state)  # keep the best validation epoch
         return history
+
+    def _forward_batched(self, X: np.ndarray, batch_size: int = 8192) -> np.ndarray:
+        out = []
+        with torch.no_grad():
+            for i in range(0, len(X), batch_size):
+                xb = torch.tensor(X[i : i + batch_size], dtype=torch.float32, device=self.device)
+                out.append(self.net(xb).cpu().numpy())
+        return np.concatenate(out) * self.target_scale
 
     def predict(self, X: np.ndarray) -> np.ndarray:
         self.net.eval()
-        with torch.no_grad():
-            X_t = torch.tensor(X, dtype=torch.float32).to(self.device)
-            return self.net(X_t).cpu().numpy() * self.target_scale
+        return self._forward_batched(X)
 
     def predict_with_uncertainty(self, X: np.ndarray, n_samples: int = 20) -> tuple[np.ndarray, np.ndarray]:
         """MC-dropout: keep dropout active across stochastic forward passes."""
         self.net.train()  # dropout stays active
-        X_t = torch.tensor(X, dtype=torch.float32).to(self.device)
-        preds = []
-        with torch.no_grad():
-            for _ in range(n_samples):
-                preds.append(self.net(X_t).cpu().numpy())
-        preds = np.stack(preds, axis=0) * self.target_scale
+        preds = np.stack([self._forward_batched(X) for _ in range(n_samples)], axis=0)
+        self.net.eval()
         return preds.mean(axis=0), preds.std(axis=0)
 
     def save(self, path: str) -> None:
@@ -140,7 +150,8 @@ class TwinRULModel:
         )
 
     @classmethod
-    def load(cls, path: str, device: str = "cpu") -> "TwinRULModel":
+    def load(cls, path: str, device: str | None = None) -> "LSTMRULModel":
+        device = device or ("cuda" if torch.cuda.is_available() else "cpu")
         ckpt = torch.load(path, map_location=device)
         model = cls(
             n_features=ckpt["n_features"],
@@ -153,36 +164,3 @@ class TwinRULModel:
         model.net.load_state_dict(ckpt["state_dict"])
         return model
 
-
-def project_trajectory(
-    model: TwinRULModel,
-    window: np.ndarray,
-    max_horizon: int = 300,
-    rul_floor: float = 0.0,
-) -> np.ndarray:
-    """Digital-twin what-if forward sim: roll the window forward using each
-    feature's linear trend within the current window, re-predicting RUL each
-    step, until predicted RUL hits `rul_floor` or `max_horizon` cycles pass.
-
-    window: (window_size, n_features) -- most recent real observations.
-    Returns: (n_projected_steps,) array of projected RUL values.
-    """
-    window_size, n_features = window.shape
-    t = np.arange(window_size, dtype=float)
-    t_centered = t - t.mean()
-    denom = np.sum(t_centered**2)
-
-    cur = window.copy()
-    projected = []
-    for _ in range(max_horizon):
-        mean = cur.mean(axis=0)
-        slope = np.sum((cur - mean) * t_centered[:, None], axis=0) / denom
-        next_step = cur[-1] + slope  # linear extrapolation of each sensor/setting
-
-        cur = np.concatenate([cur[1:], next_step[None, :]], axis=0)
-        rul_pred = float(model.predict(cur[None, :, :])[0])
-        projected.append(rul_pred)
-        if rul_pred <= rul_floor:
-            break
-
-    return np.array(projected)
