@@ -1,0 +1,97 @@
+\section{Introduction}
+\label{sec:intro}
+
+Maintenance accounts for a large share of the operating cost of aircraft
+engines, and the central decision is deceptively simple: when should an engine
+come off the wing? Removing it too late risks an unplanned failure in service,
+the most expensive and most dangerous outcome. Removing it too early discards
+flight cycles that were already paid for. The classical answer is
+\emph{time-based} maintenance: retire every unit at a fixed age chosen from
+fleet lifetime statistics~\cite{barlow1960optimum}. It is safe on average but
+wasteful, because it treats the longest-lived engine exactly like the
+shortest-lived one. \emph{Condition-based} maintenance instead uses each
+engine's own sensor data to estimate its remaining useful life (RUL) and act on
+it~\cite{jardine2006review,lei2018review}.
+
+The NASA C-MAPSS dataset~\cite{saxena2008damage}, which simulates fleets of
+turbofans degrading from a healthy state to failure under noise, multiple
+operating regimes and multiple fault modes, has become the standard benchmark
+for RUL estimation~\cite{ramasso2014benchmark}. Over the last decade, reported
+accuracy on it has improved steadily through convolutional~\cite{babu2016cnn,li2018dcnn},
+recurrent~\cite{zheng2017lstm}, hybrid~\cite{aldulaimi2019hdnn} and
+attention-based~\cite{ragab2020ats2s} networks. Three gaps nevertheless separate
+these models from an autonomous maintenance system.
+
+\emph{First, point estimates are not decisions.} A model that predicts 40
+cycles of remaining life with an error of $\pm$5 cycles supports a very
+different action from one that predicts 40 cycles with an error of $\pm$40.
+Most published C-MAPSS models output a single number. Where uncertainty is
+added, typically through Monte-Carlo dropout~\cite{gal2016dropout}, its
+calibration is rarely checked, and benchmarks of uncertainty methods for
+prognostics show that calibration quality varies widely~\cite{basora2023uqbench}.
+
+\emph{Second, accuracy is measured in the wrong place.} The benchmark protocol
+scores each test engine only at the last cycle of a truncated trajectory. This
+reveals nothing about how a model behaves as an engine approaches failure,
+whether a policy built on it would ground engines in time, or what that policy
+would cost relative to simply retiring engines at a fixed age.
+
+\emph{Third, ``digital twin'' is used loosely.} The concept, as articulated for
+aerospace by Glaessgen and Stargel~\cite{glaessgen2012digital} and formalized
+by Grieves and Vickers~\cite{grieves2017digital}, denotes a virtual model bound
+to one specific physical asset and kept synchronized with it. Neural RUL
+regressors trained on a whole fleet hold no per-asset state and are not
+synchronized with anything, yet they are frequently presented as twins.
+
+At the same time, practical deployment imposes a systems constraint. A model
+that runs on or near the engine every cycle must be small and stateless, while
+a model that maintains a detailed belief about each engine is naturally hosted
+off board, where consulting it costs communication and connectivity. Edge
+computing~\cite{shi2016edge} and cascaded inference~\cite{teerapittayanon2016branchynet}
+suggest the obvious pattern: run the cheap model always, and escalate to the
+expensive one only when needed.
+
+This paper presents \emph{Twin Turbo}, a framework that addresses all three
+gaps within that edge/twin pattern. A gradient-boosted edge model runs on every
+cycle and is wrapped in Mondrian conformal prediction~\cite{vovk2005alrw,angelopoulos2021gentle},
+giving it calibrated intervals at negligible cost. A digital twin, instantiated
+once per engine, tracks a sensor-fused health index~\cite{wang2008similarity}
+with a particle filter~\cite{arulampalam2002tutorial,orchard2009particle} over
+an exponential degradation model whose population prior is learned from
+run-to-failure engines~\cite{gebraeel2005residual}. The twin is synchronized
+only when the edge model raises one of three triggers (low predicted RUL, a
+sharp one-cycle drop, or a periodic resynchronization deadline), and a fixed
+policy maps the more cautious of the two calibrated lower bounds to one of four
+actions: continue, watch, schedule maintenance, or ground now.
+
+The contributions of this work are:
+\begin{enumerate}
+  \item \textbf{An instance-specific, synchronizable digital twin} for
+  turbofan prognostics, combining a learned health index with Bayesian
+  particle filtering of a fleet prior. On the official C-MAPSS test sets it
+  attains RMSE between 10.33 and 14.78, and its 90\% posterior intervals are
+  empirically calibrated (86--94\% coverage) without tuning.
+  \item \textbf{A hybrid edge/twin decision architecture} with conformally
+  calibrated edge intervals, trigger-based twin synchronization, and a
+  cautious fusion rule that preserves at least 90\% coverage by the union
+  bound.
+  \item \textbf{A decision-level evaluation protocol} that replays 709
+  held-out engines from first cycle to failure and scores every policy by
+  failures, unused life and long-run renewal-reward cost rate, against optimal
+  age replacement~\cite{barlow1960optimum}, edge-only, twin-only, LSTM and
+  oracle baselines, with ablations of every design choice. Under this
+  protocol the hybrid policy prevents every failure, reduces cost rate by
+  34--47\% relative to age replacement, and consults the twin on 21--28\% of
+  cycles.
+  \item \textbf{An open, reproducible implementation} with an interactive
+  console that replays engines, the fleet and the particle filter live from
+  the same traces used for the reported results.
+\end{enumerate}
+
+The remainder of the paper is organized as follows.
+Section~\ref{sec:related} surveys prognostics methods, uncertainty
+quantification, digital twins, edge inference and maintenance decision theory,
+and positions this work among them. Subsequent sections describe the dataset
+and preprocessing, the edge model, the digital twin and the decision layer,
+followed by the experimental protocol, results, ablations and a discussion of
+limitations.

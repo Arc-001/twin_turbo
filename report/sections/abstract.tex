@@ -1,0 +1,32 @@
+\begin{abstract}
+Deciding when to remove a jet engine from service trades the cost of an
+in-service failure against the value of the life left unused. Deep-learning
+models for remaining-useful-life (RUL) prediction report steadily lower error
+on the NASA C-MAPSS benchmark, but they output point estimates without
+calibrated confidence, and they are evaluated on prediction error rather than
+on the maintenance decisions they would drive. This paper presents
+\emph{Twin Turbo}, a framework that combines a lightweight edge model with a
+per-engine digital twin and makes autonomous maintenance decisions from
+calibrated lower bounds. The edge model is a gradient-boosted tree ensemble
+over 30-cycle sensor windows, wrapped in Mondrian conformal prediction so that
+its intervals carry a distribution-free coverage guarantee. The digital twin is
+a particle filter over an exponential health-index degradation model: a
+population prior learned from run-to-failure engines is updated with the
+observations of one specific engine, yielding a full RUL distribution. The edge
+model runs every cycle; the twin is synchronized only when one of three
+triggers fires, and the policy acts on the more cautious of the two calibrated
+bounds. On the official C-MAPSS test sets the twin reaches an RMSE of
+10.33 on FD002, and its 90\% intervals achieve 86--94\% empirical coverage,
+against 43--54\% for Monte-Carlo dropout on an LSTM baseline. Replaying 709
+held-out engines from first cycle to failure through five-fold
+cross-validation, the hybrid policy lets no engine fail, lowers the long-run
+maintenance cost rate by 34--47\% relative to optimal age replacement, consults
+the twin on only 21--28\% of cycles, and is the only policy evaluated that
+remains failure-free without any safety buffer on all four datasets.
+\end{abstract}
+
+\begin{IEEEkeywords}
+prognostics and health management, remaining useful life, digital twin,
+particle filter, conformal prediction, edge computing, predictive maintenance,
+C-MAPSS
+\end{IEEEkeywords}

@@ -49,6 +49,32 @@ consistent across this line of work: (i) models output a point estimate,
 with no calibrated measure of confidence, and (ii) accuracy is reported only at
 the last observed cycle of each truncated test engine, which says nothing about
 whether the resulting \emph{maintenance decisions} are safe or economical.
+\begin{table}[t]
+\centering
+\caption{Published test-set RMSE on C-MAPSS for representative methods, as
+compiled by Ragab et~al.~\cite{ragab2020ats2s}. Lower is better.}
+\label{tab:literature}
+\setlength{\tabcolsep}{4pt}
+\begin{tabular}{@{}lcccc@{}}
+\toprule
+Method & FD001 & FD002 & FD003 & FD004 \\
+\midrule
+Gradient boosting~\cite{zhang2016modbne}      & 15.67 & 29.09 & 16.84 & 29.01 \\
+2-D CNN~\cite{babu2016cnn}                   & 18.45 & 30.29 & 19.82 & 29.16 \\
+Deep LSTM~\cite{zheng2017lstm}               & 16.14 & 24.49 & 16.81 & 28.17 \\
+1-D deep CNN~\cite{li2018dcnn}               & 12.61 & 22.36 & 12.64 & 23.31 \\
+MODBNE ensemble~\cite{zhang2016modbne}       & 15.04 & 25.05 & 12.51 & 28.66 \\
+BiLSTM enc.--dec.~\cite{yu2019bilstmed}      & 14.74 & 22.07 & 17.48 & 23.49 \\
+Hybrid DNN~\cite{aldulaimi2019hdnn}          & 13.02 & 15.24 & 12.22 & 18.16 \\
+Attention seq2seq~\cite{ragab2020ats2s}      & 12.63 & 14.65 & 11.44 & 16.66 \\
+\bottomrule
+\end{tabular}
+\\[2pt]
+\parbox{\columnwidth}{\footnotesize Figures for the same method can differ
+slightly between compilations (e.g.\ 16.18 rather than 16.81 is also reported
+for the deep LSTM on FD003); we use one source throughout for consistency.}
+\end{table}
+
 Gradient-boosted trees~\cite{friedman2001gbm,ke2017lightgbm} on hand-crafted
 window features remain a strong, far cheaper baseline.
 
@@ -97,6 +123,29 @@ maintenance is compared against this optimal time-based policy and not only
 against run-to-failure.
 
 \subsection{Positioning of this work}
+\begin{table}[t]
+\centering
+\caption{Typical properties of each family of approaches as applied to
+C-MAPSS, and of this work.}
+\label{tab:gap}
+\setlength{\tabcolsep}{3pt}
+\renewcommand{\arraystretch}{1.1}
+\begin{tabular}{@{}>{\raggedright}p{0.37\columnwidth}>{\centering}p{0.17\columnwidth}>{\centering}p{0.17\columnwidth}>{\centering\arraybackslash}p{0.19\columnwidth}@{}}
+\toprule
+Approach & Calibrated uncertainty & Per-asset state & Decisions evaluated \\
+\midrule
+Similarity-based HI matching~\cite{wang2008similarity} & -- & -- & -- \\
+Bayesian degradation / particle filters~\cite{gebraeel2005residual,orchard2009particle} & posterior & \checkmark & rarely \\
+Deep point regressors~\cite{babu2016cnn,zheng2017lstm,li2018dcnn,ragab2020ats2s} & -- & -- & -- \\
+Deep nets + MC dropout / ensembles~\cite{gal2016dropout,lakshminarayanan2017ensembles} & not guaranteed~\cite{basora2023uqbench} & -- & rarely \\
+Conformal prediction~\cite{vovk2005alrw,angelopoulos2021gentle} & \checkmark & -- & rarely \\
+Age replacement~\cite{barlow1960optimum} & n/a & -- & \checkmark \\
+\midrule
+\textbf{This work} & \checkmark & \checkmark & \checkmark \\
+\bottomrule
+\end{tabular}
+\end{table}
+
 Existing C-MAPSS studies optimize last-cycle RMSE of point predictors;
 existing digital-twin work is mostly conceptual or not benchmarked on it.
 This project combines (i) an instance-specific, Bayesian-updated degradation
@@ -104,4 +153,5 @@ twin in the tradition of~\cite{gebraeel2005residual,orchard2009particle},
 (ii) a conformally calibrated edge model, and (iii) a trigger-based
 synchronization scheme, and evaluates the combination on what matters
 operationally: failures prevented, useful life used and cost rate, over
-engines replayed all the way to failure.
+engines replayed all the way to failure. Table~\ref{tab:gap} summarizes how
+this combination relates to the families surveyed above.
