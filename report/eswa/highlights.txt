@@ -1,0 +1,7 @@
+Highlights
+
+- Two-tier system: cheap edge model every cycle, digital twin only on demand
+- Particle-filter twin gives calibrated RUL intervals (86-94% at 90% target)
+- Zero failures in 709 engines replayed to failure, at every grounding threshold
+- Maintenance cost 34-47% below optimal age replacement on NASA C-MAPSS
+- Twin consulted on only 21-28% of cycles, cutting edge-to-cloud traffic

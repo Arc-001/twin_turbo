@@ -1,0 +1,55 @@
+Dear Editor,
+Expert Systems with Applications
+
+We are pleased to submit our manuscript, "Twin Turbo: An intelligent maintenance
+decision system combining calibrated edge models and particle-filter digital
+twins for turbofan engines", for consideration as a full-length article in
+Expert Systems with Applications.
+
+The paper presents an intelligent decision-support system for aircraft-engine
+maintenance that combines two sources of knowledge. A lightweight model running
+on the engine evaluates every flight cycle. A per-engine digital twin, which
+encodes fleet-level knowledge of how engines degrade and updates it with that
+engine's own evidence, is consulted only when one of three simple triggers
+fires. Both tiers report calibrated uncertainty, and the system acts on the
+more cautious of the two, so that it knows how far to trust its own
+conclusions before deciding to ground an engine.
+
+Our central claim concerns safety and efficiency rather than prediction
+accuracy alone. We evaluate the system on the decisions it makes by replaying
+709 held-out engines from the public NASA C-MAPSS dataset cycle by cycle from
+first use to failure, and compare it against fixed-age replacement, deep-learning
+baselines and single-model alternatives:
+
+  - No engine failed under our system, at any grounding threshold we tested and
+    on all four sub-datasets, including with no safety margin. Every other
+    policy evaluated needed a dataset-specific margin to avoid failures.
+  - The expensive digital twin was consulted on only about one cycle in four
+    (21-28%), so most decisions rely on the inexpensive edge model alone.
+  - Long-run maintenance cost fell by 34-47% relative to the best fixed-age
+    replacement schedule.
+  - The twin's uncertainty ranges were well calibrated (86-94% coverage of a
+    90% target), whereas Monte-Carlo dropout on an LSTM covered only 43-54%.
+
+We believe this work fits the journal's focus on intelligent systems applied
+to real decision problems: it shows how knowledge-based and data-driven
+components can be combined into an autonomous decision system whose
+confidence can be verified, and it discusses the practical implications for
+deployment under limited connectivity. All code, experiment scripts and cached
+results are publicly available at https://github.com/Arc-001/twin_turbo, and
+every table and figure can be regenerated from them.
+
+We confirm that this manuscript is original, has not been published elsewhere,
+and is not under consideration by any other journal. All authors have read and
+approved the manuscript and agree with its submission. The authors declare no
+competing interests, and no funding was received for this work.
+
+Thank you for considering our submission.
+
+Sincerely,
+
+Archit Singh (corresponding author)
+architsingh24@gmail.com
+On behalf of Vedant Vadke, Rishabh Raushan and Sreevarsh Mahesh Gandhi
+Department of Computer Science and Engineering (AI/ML)
+SRM Institute of Science and Technology, Kattankulathur, Chennai, India

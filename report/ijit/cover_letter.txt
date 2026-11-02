@@ -1,0 +1,56 @@
+Dear Prof. M. N. Hoda,
+Editor-in-Chief, International Journal of Information Technology
+
+We are pleased to submit our manuscript, "Twin Turbo: calibrated hybrid edge
+intelligence and particle-filter digital twins for autonomous turbofan
+maintenance decisions", for consideration as a research article in the
+International Journal of Information Technology.
+
+The paper addresses a practical systems question: how can an inexpensive model
+running on every engine cycle work together with a more detailed, per-engine
+"digital twin" so that maintenance decisions are both safe and economical,
+without consulting the expensive model all the time? Our framework runs a small
+tree-based model at the edge on every cycle and contacts the engine's digital
+twin only when one of three simple triggers fires. Each model reports a range
+that is checked statistically to contain the true remaining life about 90% of
+the time, and the system acts on the more cautious of the two ranges.
+
+We evaluate the system on the decisions it makes, not only on prediction error.
+Using the public NASA C-MAPSS turbofan dataset, we replay 709 held-out engines
+cycle by cycle from first use to failure and compare our policy against nine
+alternatives, including fixed-age replacement and deep-learning baselines. The
+main findings are:
+
+  - No engine failed under the hybrid policy, at any grounding threshold we
+    tested and on all four sub-datasets, including with no safety margin at
+    all. Every other policy we evaluated needed a dataset-specific safety
+    margin to avoid failures.
+  - The digital twin was consulted on only about one cycle in four (21-28%),
+    so most of the time the system relies on the cheap edge model alone.
+  - Long-run maintenance cost fell by 34-47% compared with the best fixed-age
+    replacement schedule.
+  - The twin's uncertainty ranges were well calibrated (86-94% coverage of a
+    90% target), whereas a common deep-learning alternative (LSTM with
+    Monte-Carlo dropout) covered only 43-54%.
+
+We believe the work fits the journal's scope in applied computing and
+intelligent systems: it combines edge computing, machine learning and
+decision-making in one end-to-end pipeline, and it is fully reproducible.
+The complete source code, experiment scripts and cached results are publicly
+available at https://github.com/Arc-001/twin_turbo, and every table and figure
+in the paper can be regenerated from them.
+
+We confirm that this manuscript is original, has not been published elsewhere,
+and is not under consideration by any other journal. All authors have read and
+approved the manuscript and agree with its submission. The authors have no
+competing interests to declare, and no funding was received for this work.
+
+Thank you for considering our submission.
+
+Sincerely,
+
+Archit Singh (corresponding author)
+architsingh24@gmail.com
+On behalf of Vedant Vadke, Rishabh Raushan and Sreevarsh Mahesh Gandhi
+Department of Computer Science and Engineering (AI/ML)
+SRM Institute of Science and Technology, Kattankulathur, Chennai, India

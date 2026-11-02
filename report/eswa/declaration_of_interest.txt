@@ -1,0 +1,14 @@
+Declaration of interests
+
+[X] The authors declare that they have no known competing financial interests
+    or personal relationships that could have appeared to influence the work
+    reported in this paper.
+
+[ ] The authors declare the following financial interests/personal
+    relationships which may be considered as potential competing interests:
+
+Manuscript title: Twin Turbo: An intelligent maintenance decision system
+combining calibrated edge models and particle-filter digital twins for
+turbofan engines
+
+Authors: Archit Singh, Vedant Vadke, Rishabh Raushan, Sreevarsh Mahesh Gandhi
